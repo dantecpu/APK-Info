@@ -51,7 +51,7 @@ Global $tmpArrBadge, $dirAPK, $fileAPK, $fullPathAPK
 Global $sNewFilenameAPK, $searchPngCache, $hashCache
 Global $progress = 0
 Global $progressMax = 1
-
+Global $IsUnityIL2Cpp
 Global $nbsp = ChrW(0xA0)
 
 $Inidir = $ScriptDir & "\"
@@ -196,7 +196,7 @@ $strAuto = 'Android Auto'
 $strAndroid = 'Android'
 $strVirusTotal = 'VirusTotal'
 $strAdb = 'ADB'
-
+$strCheckIsUnity = 'IsUnity'
 $urlUpdate = 'https://github.com/Enyby/APK-Info/releases/latest'
 
 $URLPlayStore = IniRead($IniFile, $LangSection, "URLPlaystore", "https://play.google.com/store/apps/details?id=")
@@ -381,7 +381,7 @@ $gBtn_CheckUpdate = _makeButton($strCheckUpdate, "update.bmp")
 $gBtn_VirusTotal = _makeButton($strVirusTotal, "virustotal.bmp")
 $gBtn_Rename = _makeButton($strRename, "rename.bmp")
 $gBtn_Adb = _makeButton($strAdb, "adb.bmp")
-
+$gBtn_CheckUnity = _makeButton($strCheckIsUnity, "new.bmp")
 $gBtn_TextInfo = -1002
 If $TextInfo <> '' Then $gBtn_TextInfo = _makeButton($strTextInformation, "text.bmp")
 
@@ -524,6 +524,9 @@ While 1
 		Case $gBtn_Exit, $GUI_EVENT_CLOSE
 			_cleanUp()
 			Exit
+
+	    Case $gBtn_CheckUnity
+			_CheckUnity()
 
 		Case $GUI_EVENT_RESIZED, $GUI_EVENT_RESTORE, $GUI_EVENT_MAXIMIZE
 			_OnResize()
@@ -802,7 +805,7 @@ Func _OpenNewFile($apk, $progress = True)
 	ProgressSet(25, $fileAPK, $strIcon & '...')
 
 	_extractIcon()
-
+   	_CheckIsUnityIL2CPP()
 	ProgressSet(75, $fileAPK, $strSignature & '...')
 
 	_getSignature($fullPathAPK, $CheckSignature, $processSignature)
@@ -828,7 +831,7 @@ Func _OpenNewFile($apk, $progress = True)
 		$labels = $GUI_SHOW
 	EndIf
 
-	GUICtrlSetData($inpLabel, $apk_Label)
+	GUICtrlSetData($inpLabel, $apk_Label   & ' -------- [ ' &  $IsUnityIL2Cpp & ' ]')
 	GUICtrlSetState($btnLabels, $labels)
 	GUICtrlSetData($inpVersion, $apk_Version)
 	GUICtrlSetData($inpBuild, $apk_Build)
@@ -1848,3 +1851,33 @@ Func _Lib_IntToFloat($iInt)
 	DllStructSetData($tInt, 1, $iInt)
 	Return DllStructGetData($tFloat, 1)
 EndFunc   ;==>_Lib_IntToFloat
+
+
+Func _CheckUnity()
+   _CheckIsUnityIL2CPP()
+   MsgBox(0, $fullPathAPK, $IsUnityIL2Cpp)
+ EndFunc;
+
+Func _CheckIsUnityIL2CPP()
+   Local $IsUnity = 0
+   $foo = _Run('list', '"' & $toolsDir & 'unzip" -l ' & '"' & $fullPathAPK & '"', $STDERR_CHILD + $STDOUT_CHILD)
+   $output = _readAll($foo, 'list')
+   $p = 'lib/armeabi-v7a/libunity.so'
+   If StringInStr($output, $p) Then $IsUnity = 1
+   $p = 'lib/armeabi-v7a/libil2cpp.so'
+   If StringInStr($output, $p) Then $IsUnity = 2
+
+   $p = 'lib/arm64-v8a/libunity.so'
+   If StringInStr($output, $p) Then $IsUnity = 1
+   $p = 'lib/arm64-v8a/libil2cpp.so'
+   If StringInStr($output, $p) Then $IsUnity = 2
+
+   Switch $IsUnity
+	  Case 0
+		 $IsUnityIL2Cpp = 'Not Unity';
+	  Case 1
+		 $IsUnityIL2Cpp = 'Mono';
+	  Case 2
+		 $IsUnityIL2Cpp = 'IL2Cpp';
+	  EndSwitch
+ EndFunc;
